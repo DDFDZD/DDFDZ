@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>지뢰찾기 게임</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+        }
+        h1 {
+            color: #333;
+        }
+        #board {
+            display: grid;
+            grid-template-columns: repeat(10, 40px);
+            gap: 2px;
+            margin-top: 20px;
+        }
+        .cell {
+            width: 40px;
+            height: 40px;
+            background-color: #ddd;
+            text-align: center;
+            line-height: 40px;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .mine {
+            background-color: red;
+        }
+        .revealed {
+            background-color: #fff;
+        }
+        #restart {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            display: none; /* 처음에는 숨김 */
+        }
+    </style>
+</head>
+<body>
+    <h1>지뢰찾기 게임</h1>
+    <div id="board"></div>
+    <button id="restart">게임 재시작</button>
+    <audio id="explosion-sound" src="explosion.mp3" preload="auto"></audio>
+
+    <script>
+        const boardSize = 10;
+        const mineCount = 15;
+        let board = [];
+        let gameOver = false;
+
+        // 보드 초기화
+        function initBoard() {
+            board = Array.from({ length: boardSize }, () => Array(boardSize).fill(0));
+            placeMines();
+            calculateNumbers();
+            createBoardUI();
+            gameOver = false;
+            document.getElementById('restart').style.display = 'none'; // 재시작 버튼 숨김
+        }
+
+        // 지뢰 배치
+        function placeMines() {
+            let placedMines = 0;
+            while (placedMines < mineCount) {
+                const row = Math.floor(Math.random() * boardSize);
+                const col = Math.floor(Math.random() * boardSize);
+                if (board[row][col] !== -1) {
+                    board[row][col] = -1;
+                    placedMines++;
+                }
+            }
+        }
+
+        // 숫자 계산
+        function calculateNumbers() {
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    if (board[row][col] === -1) continue;
+                    let mineCount = 0;
+                    for (let i = -1; i <= 1; i++) {
+                        for (let j = -1; j <= 1; j++) {
+                            if (row + i >= 0 && row + i < boardSize && col + j >= 0 && col + j < boardSize) {
+                                if (board[row + i][col + j] === -1) mineCount++;
+                            }
+                        }
+                    }
+                    board[row][col] = mineCount;
+                }
+            }
+        }
+
+        // UI 생성
+        function createBoardUI() {
+            const boardElement = document.getElementById('board');
+            boardElement.innerHTML = '';
+            for (let row = 0; row < boardSize; row++) {
+                for (let col = 0; col < boardSize; col++) {
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.dataset.row = row;
+                    cell.dataset.col = col;
+                    cell.addEventListener('click', revealCell);
+                    boardElement.appendChild(cell);
+                }
+            }
+        }
+
+        // 셀 공개
+        function revealCell(event) {
+            if (gameOver) return;
+            const row = event.target.dataset.row;
+            const col = event.target.dataset.col;
+            const explosionSound = document.getElementById('explosion-sound');
+
+            if (board[row][col] === -1) {
+                gameOver = true;
+                explosionSound.play(); // 터지는 소리 재생
+                alert('게임 오버! 지뢰를 밟았습니다.');
+                revealAllMines();
+                document.getElementById('restart').style.display = 'block'; // 재시작 버튼 표시
+            } else {
+                event.target.classList.add('revealed');
+                event.target.innerText = board[row][col] > 0 ? board[row][col] : '';
+                if (board[row][col] === 0) {
+                    revealAdjacentCells(row, col);
+                }
+            }
+        }
+
+        // 인접 셀 공개
+        function revealAdjacentCells(row, col) {
+            for (let i = -1; i <= 1; i++) {
+                for (let j = -1; j <= 1; j++) {
+                    const newRow = parseInt(row) + i;
+                    const newCol = parseInt(col) + j;
+                    if (newRow >= 0 && newRow < boardSize && newCol >= 0 && newCol < boardSize) {
+                        const cell = document.querySelector(`.cell[data-row="${newRow}"][data-col="${newCol}"]`);
+                        if (!cell.classList.contains('revealed')) {
+                            cell.click();
+                        }
+                    }
+                }
+            }
+        }
+
+        // 모든 지뢰 공개
+        function revealAllMines() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const row = cell.dataset.row;
+                const col = cell.dataset.col;
+                if (board[row][col] === -1) {
+                    cell.classList.add('mine');
+                }
+            });
+        }
+
+        // 게임 재시작
+        document.getElementById('restart').addEventListener('click', initBoard);
+
+        // 게임 시작
+        initBoard();
+    </script>
+</body>
+</html>
